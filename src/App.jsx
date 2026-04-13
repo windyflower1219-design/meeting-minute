@@ -27,7 +27,8 @@ const STEPS = [
 import { getBasicInfo, getSummary, getActionItems } from './ai';
 
 export default function App() {
-  const [apiKey, setApiKey] = useState('');
+  // 환경 변수(VITE_GEMINI_API_KEY)가 있으면 초기값으로 사용
+  const [apiKey, setApiKey] = useState(import.meta.env.VITE_GEMINI_API_KEY || '');
   const [transcript, setTranscript] = useState(null);
   const [slides, setSlides] = useState(null);
   const [jobId, setJobId] = useState(null);
