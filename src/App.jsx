@@ -42,6 +42,8 @@ export default function App() {
     action_items: []
   });
 
+  const [errorMsg, setErrorMsg] = useState('');
+
   const handleUpload = async () => {
     if (!transcript || !slides || !apiKey) {
       alert("API 키와 파일들을 모두 입력해주세요.");
@@ -49,27 +51,27 @@ export default function App() {
     }
 
     setStatus('processing');
+    setErrorMsg('');
     const newJobId = `job_${Date.now()}`;
     setJobId(newJobId);
-    setProgress({ parsing: 20 });
+    setProgress({ parsing: 10 });
 
     try {
       const transcriptText = await transcript.text();
       
-      // 1. 기본 정보 추출 (가장 먼저 수행)
+      // 1. 기본 정보 추출
       setProgress(prev => ({ ...prev, parsing: 40 }));
       const basicInfo = await getBasicInfo(apiKey, transcriptText);
       setResult(prev => ({ ...prev, ...basicInfo }));
       
-      // 상태 전환 (기본 정보가 보이기 시작함)
       setStatus('completed'); 
 
-      // 2. 요약 생성 (비동기 병렬 느낌으로 수행 가능하지만 순서상 두 번째)
+      // 2. 요약 생성
       setProgress(prev => ({ ...prev, agenda: 60 }));
       const summary = await getSummary(apiKey, transcriptText);
       setResult(prev => ({ ...prev, summary }));
 
-      // 3. Action Item 추출 (마지막 단계)
+      // 3. Action Item 추출
       setProgress(prev => ({ ...prev, action_items: 80 }));
       const actionItems = await getActionItems(apiKey, transcriptText);
       setResult(prev => ({ ...prev, action_items: actionItems }));
@@ -78,6 +80,7 @@ export default function App() {
 
     } catch (err) {
       console.error(err);
+      setErrorMsg(err.message || '알 수 없는 오류가 발생했습니다.');
       setStatus('error');
     }
   };
@@ -95,17 +98,23 @@ export default function App() {
         </motion.h1>
         <p className="text-gray-400 text-lg mb-8">녹취록과 발표자료를 기반으로 실행 가능한 회의록을 생성합니다.</p>
         
-        {/* API Key Input */}
-        <div className="max-w-md mx-auto relative group">
-          <input 
-            type="password"
-            placeholder="Gemini API Key를 입력하세요"
-            value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
-            className="w-full bg-white/5 border border-white/10 rounded-full px-6 py-3 focus:outline-none focus:border-blue-500/50 transition-all text-center"
-          />
-          <div className="absolute inset-0 rounded-full bg-blue-500/5 blur-xl group-focus-within:bg-blue-500/10 transition-all -z-10"></div>
-        </div>
+        {/* API Key Input - 환경 변수가 없을 때만 표시 */}
+        {!import.meta.env.VITE_GEMINI_API_KEY ? (
+          <div className="max-w-md mx-auto relative group">
+            <input 
+              type="password"
+              placeholder="Gemini API Key를 입력하세요"
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              className="w-full bg-white/5 border border-white/10 rounded-full px-6 py-3 focus:outline-none focus:border-blue-500/50 transition-all text-center"
+            />
+            <div className="absolute inset-0 rounded-full bg-blue-500/5 blur-xl group-focus-within:bg-blue-500/10 transition-all -z-10"></div>
+          </div>
+        ) : (
+          <div className="inline-flex items-center gap-2 px-4 py-1 rounded-full bg-green-500/10 border border-green-500/20 text-green-400 text-sm">
+            <CheckCircle2 size={14} /> 시스템 API 연동 완료
+          </div>
+        )}
       </header>
 
       <main>
@@ -237,7 +246,7 @@ export default function App() {
           <div className="text-center p-20 glass-card">
               <AlertCircle size={48} className="mx-auto text-red-500 mb-4" />
               <h2 className="text-2xl font-bold mb-2">오류가 발생했습니다</h2>
-              <p className="text-gray-400 mb-6">파일 처리 중 문제가 발생했습니다. 다시 시도해 주세요.</p>
+              <p className="text-gray-400 mb-6">{errorMsg || '파일 처리 중 문제가 발생했습니다. 다시 시도해 주세요.'}</p>
               <button onClick={() => setStatus('idle')} className="bg-white text-black px-6 py-2 rounded-full font-medium">재시도</button>
           </div>
         )}
